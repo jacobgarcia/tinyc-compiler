@@ -1,3 +1,0 @@
-flex calc.l
-bison -yd calc_grammar.y
-gcc y.tab.c lex.yy.c -lfl -o analisis
