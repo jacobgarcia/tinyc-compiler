@@ -1,0 +1,4 @@
+lexical_analyzer
+tiny_c_grammar.tab.c
+tiny_c_grammar.output
+lex.yy.c
