@@ -1,18 +1,15 @@
 %{
-	#include <stdio.h>
+    #include <stdio.h>
 	#include "table.h"
-  #include <glib.h>
-  /* Function definitions */
+    /* Function definitions */
 	void yyerror (char *string);
 	extern int yylineno;
-	struct symtab *sp;
-  GHashTable *table;
 %}
 
  /* Define the elements of the attribute stack */
 %union {
-  float dval;
-  struct symtab *symp;
+    float dval;
+    struct symtab *symp;
 }
 
  /* NAME is used for identifier tokens */
@@ -96,47 +93,46 @@ variable:					ID
 
 /* Bison does NOT implement yyerror, so define it here */
 void yyerror (char *string){
-	//Printing line where conflict was found. Subtracted to fix variable 
-	printf ("Error  in line %d\n",yylineno-1);
+    //Printing line where conflict was found. Subtracted to fix variable 
+    printf ("Error  in line %d\n",yylineno-1);
 }
 
 /* This function looks for a name in the symbol table, if it is */
 /* not there it store it in the next available space.           */
-struct symtab *symlook(string s) {
+symtab_entry_p symlook(string s) {
     string p;
-
-    for(sp = symtab; sp < &symtab[NSYMS]; sp++) {
-       /* is it already here? */
-        if(sp->name && !strcmp(sp->name, s))
-            return sp;
-        
-        /* is it free */
-        if(!sp->name) {
-            sp->name = strdup(s);
-            return sp;
+    symtab_entry_p res = g_hash_table_lookup(table, s);
+    if (res == NULL){
+        symtab_entry_p new_entry = malloc(sizeof(symtab_entry_));
+        new_entry->name = strdup(s);
+        if (g_hash_table_insert(table, new_entry->name, new_entry))
+            return new_entry;
+        else{
+            printf("Error inserting at hash table");
+            exit(1);    /* cannot continue */
         }
-        /* otherwise continue to next */
     }
-    yyerror("Too many symbols");
-    exit(1);    /* cannot continue */
-} /* symlook */
+    else {
+        return res;
+    }
+} 
+void printItem(gpointer key, gpointer value, gpointer user_data){
+    symtab_entry_p item = (symtab_entry_p) value;
+    printf("Identifier -> %s\n",item->name);
+}
 
 void printTable(){
-  printf("**************************\n");
+    printf("**************************\n");
 	printf("****** Symbol Table ******\n");
-  printf("**************************\n\n");
+    printf("**************************\n\n");
 
-  //Printin all values inside symo struct
-	for(sp = symtab; sp < &symtab[NSYMS]; sp++) {
-		if(sp->name) {
-			printf("Identifier -> %s \n",sp->name);
-		}
-	}
+    g_hash_table_foreach(table, (GHFunc)printItem, NULL);
+
 }
 
 /* Bison does NOT define the main entry point so define it here */
 main (){
-  table = g_hash_table_new(g_int64_hash, g_direct_equal);
-  yyparse();
-  printTable();
+    table = g_hash_table_new(g_str_hash, g_str_equal);
+    yyparse();
+    printTable();
 }
