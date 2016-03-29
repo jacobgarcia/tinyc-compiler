@@ -1,6 +1,6 @@
 /*	Project:	Syntatic Analizer
 *	Purpose: 	Analyze declarations in a tinyC program
-*	Authors: 	Jacob Rivera Rios 
+*	Authors: 	Jacob Rivera Rios
 *				Oscar Sánchez Jiménez
 *	Date:		Sepetember 10th, 2015
 */
@@ -106,7 +106,7 @@
 												//printf("RT ");
 												return RT;
 											}
-											
+
 ":="										{/*Assignment Operation*/
 												//printf("Assign ");
 												return ASSIGN;
@@ -141,7 +141,7 @@
 
 \n											{	/* New Line */
 												yylineno++; /*Increasing variable value*/
-											}	
+											}
 
 
 [0-9][0-9]*									{	/* integer numbers*/
@@ -157,18 +157,21 @@
 
 0(x|X)[0-9A-Fa-f]							{	/*Hexadecimal Number*/
 												//printf("int_num ");
+                                                yylval.ival = atoi(yytext);
 												return INT_NUM;
 											}
 
 [+-]?[0-9]*"."[0-9]+([eE][-+]?[0-9]+)?		{	/*Float Number*/
 												//printf("float_num ");
+                                                yylval.fval = atof(yytext);
 												return FLOAT_NUM;
 											}
 
 
 [A-Za-z][A-Za-z0-9]*	                    {
 												//printf("identifier ");
-												yylval.symp = symlook(yytext);
+												//yylval.symp = symlook(yytext);
+                                                yylval.str = yytext;
 												return ID;
 	                                        }
 

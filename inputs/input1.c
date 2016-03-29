@@ -25,7 +25,7 @@ int j7;
 int i7;
 int h7;
 
-/* There is no "main" program, 
+/* There is no "main" program,
    just blocks */
 {
 
