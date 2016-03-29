@@ -1,7 +1,8 @@
 /*	Project:	Syntatic Analizer
 *	Purpose: 	Analyze declarations in a tinyC program
-*	Authors: 	Jacob Rivera Rios
-*				Oscar Sánchez Jiménez
+*	Authors: 	Jacob Rivera
+*				Oscar Sánchez
+*               Mario García
 *	Date:		Sepetember 10th, 2015
 */
 

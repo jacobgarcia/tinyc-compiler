@@ -1,3 +1,11 @@
+/*	Project:	Syntatic Analizer
+*	Purpose: 	Syntatic rules and program execution
+*	Authors: 	Jacob Rivera
+*				Oscar Sánchez
+*                Mario García
+*	Date:		March 29 , 2015
+*/
+
 %{
 	#include "table.h"
     /* Function definitions */

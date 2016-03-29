@@ -1,3 +1,10 @@
+/*	Project:	Syntatic Analizer
+*	Purpose: 	Analyze declarations in a tinyC program
+*	Authors: 	Jacob Rivera
+*				Oscar Sánchez
+*                Mario García
+*	Date:		March 23, 2015
+*/
 #include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
