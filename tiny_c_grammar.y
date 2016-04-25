@@ -18,7 +18,6 @@
     int ival;
     float fval;
     string str;
-    entry_p val;
     struct symtab *symp;
 }
 // Tokens from tinyc_l
@@ -50,10 +49,10 @@
 
 // Types of syntax rules
 %type <ival> type;
-%type <val> simple_exp;
-%type <val> exp;
-%type <val> term;
-%type <val> factor;
+%type <symp> simple_exp;
+%type <symp> exp;
+%type <symp> term;
+%type <symp> factor;
 %type <symp> variable;
 
 %%
@@ -86,23 +85,25 @@ stmt:						IF exp THEN stmt  | IF exp THEN stmt ELSE stmt
                                     exit(1);
                                 }
                                 else {
+                                    gen($3, NULL, ":=", $1);
+                                    printf("Called Gen (Assignment)\n");
                                     if ($1->type == INT){
                                         if ($3->type == FLO){
                                             printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
-                                            $1->value  = (int) $3->value.f;
+                                            $1->value  = $3->value;
                                         }
                                         else {
-                                            $1->value  = $3->value.i;
+                                            $1->value  = $3->value;
                                         }
                                     }
                                     else{
-                                        $1->value  = $3->value.f;
+                                        $1->value  = $3->value;
                                         if ($3->type == INT){
                                             printf("Warning at line %d: assigning integer to %s, conversion will be done\n", yylineno, $1->name);
-                                            $1->value  = (float) $3->value.i;
+                                            $1->value  = $3->value;
                                         }
                                         else {
-                                            $1->value  = $3->value.f;
+                                            $1->value  = $3->value;
                                         }
                                     }
                                     //printf("Asignando %s a %f\n",$1->name,$1->value);
@@ -191,78 +192,100 @@ exp:						simple_exp LT simple_exp {
                             };
 
 simple_exp:					simple_exp PLUS term {
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                temp->type = FLO;
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
+
                                 if (($1->type == FLO  && $3->type == INT)){
                                     printf("Warning at line %d: adding integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.f + (float) $3->value.i;
 
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
                                     printf("Warning at line %d: adding integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.i + $3->value.f;
+
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
-                                    $$->value.i = $1->value.i + $3->value.i;
+                                    temp->type = INT;
                                 }
                                 else {
-                                    $$->value.f = $1->value.f + $3->value.f;
+                                    //
                                 }
+                                gen($1,$3,"+",temp);
+                                printf("Called Gen (Addition)\n");
+                                $$ = temp;
                             }
                             |
                             simple_exp MINUS term {
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                temp->type = FLO;
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
                                     printf("Warning at line %d: substracting integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.f - $3->value.i;
 
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
                                     printf("Warning at line %d: substracting integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.i - $3->value.f;
+                                    
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
-                                    $$->value.i = $1->value.i - $3->value.i;
+                                    temp->type = INT;
                                 }
                                 else {
-                                    $$->value.f = $1->value.f - $3->value.f;
+                                    
                                 }
+                                gen($1,$3,"-",temp);
+                                printf("Called Gen (Substraction)\n");
+                                $$ = temp;
                             }|
                             term {
                                 $$ = $1;
                             };
 
 term:						term TIMES factor {
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
                                     printf("Warning at line %d: multiplying integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.f * $3->value.i;
-
+                                    temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
                                     printf("Warning at line %d: multiplying integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.i * $3->value.f;
+                                    temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
-                                    $$->value.i = $1->value.i * $3->value.i;
+                                    temp->type = INT;
                                 }
                                 else {
-                                    $$->value.f = $1->value.f * $3->value.f;
+                                    temp->type = FLO;                                    
                                 }
+                                gen($1,$3,"*",temp);
+                                printf("Called Gen (Mult)\n");
+                                $$ = temp;
                             }|
                             term DIV factor {
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
                                     printf("Warning at line %d: dividing integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.f / $3->value.i;
-
+                                    temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
                                     printf("Warning at line %d: dividing integers and floats\n", yylineno);
-                                    $$->value.f = $1->value.i / $3->value.f;
-                                    $$->type = FLO;
+                                    temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
-                                    $$->value.i = $1->value.i / $3->value.i;
+                                    temp->type = INT;
                                 }
                                 else {
-                                    $$->value.f = $1->value.f / $3->value.f;
+                                    temp->type = FLO;
                                 }
+                                gen($1,$3,"/",temp);
+                                printf("Called Gen (Division)\n");
+                                $$ = temp;
                             }|
                             factor {
                                 $$ = $1;
@@ -272,25 +295,23 @@ factor:						LPAREN exp RPAREN {
                                 $$ = $2;
                             }|
                             INT_NUM {
-                                entry_p new_val = malloc(sizeof(entry_));
-                                new_val->type = INT;
-                                new_val->value.i = $1;
-                                $$ = new_val;
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
+                                temp->type = INT;
+                                temp->value.i = $1;
+                                $$ = temp;
                             }|
                             FLOAT_NUM {
-                                entry_p new_val = malloc(sizeof(entry_));
-                                new_val->type = FLO;
-                                new_val->value.f = $1;
-                                $$ = new_val;
+                                symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+                                sprintf(integerString, "t%d", tempCounter++);
+                                temp->name = strdup(integerString);
+                                temp->type = FLO;
+                                temp->value.f = $1;
+                                $$ = temp;
                             }|
                             variable {
-                                entry_p new_val = malloc(sizeof(entry_));
-                                new_val->type = $1->type;
-                                if ($1->type == FLO)
-                                    new_val->value.f = $1->value;
-                                else
-                                    new_val->value.i = $1->value;
-                                $$ = new_val;
+                                $$ = $1;
                             };
 
 variable:					ID {
@@ -312,7 +333,7 @@ void yyerror (char *string){
 symtab_entry_p symbAdd(string s){
     symtab_entry_p new_entry = malloc(sizeof(symtab_entry_));
     new_entry->name = strdup(s);
-    new_entry->value = 1;
+    new_entry->value.i = 1;
     if (g_hash_table_insert(table, new_entry->name, new_entry))
         return new_entry;
     else{
@@ -333,6 +354,24 @@ symtab_entry_p symlook(string s) {
     else {
         return res;
     }
+}
+
+void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination){
+    quad_p newQuad = malloc(sizeof(quad_));
+    newQuad->source1 = source1;
+    if(source2 != NULL){
+        newQuad->source2 = source2;
+    }else{
+    	newQuad->source2 = NULL;
+    }
+    newQuad->destination = destination;    
+    newQuad->op = op;
+
+    //Caution: may have errors
+    newQuad->address = quadCounter++;
+    quadList = g_list_append(quadList, newQuad);
+    printf("Added\n");
+    
 }
 
 void printItem(gpointer key, gpointer value, gpointer user_data){
@@ -357,8 +396,30 @@ void printTable(){
     g_hash_table_foreach(table, (GHFunc)printItem, NULL);
 }
 
+void printQuad(gpointer value, gpointer user_data){
+    quad_p item = (quad_p) value;
+    if(item->source2 != NULL){
+    	printf("%2d %9s %12s %11s %13s\n",item->address, item->op, item->source1->name, item->source2->name, item->destination->name);
+    }else{
+    	printf("%2d %9s %12s %11s %13s\n",item->address, item->op, item->source1->name, " ", item->destination->name);
+    }    
+}
+
+void printQuadList(){
+    printf("\n**************************\n");
+    printf("****** Quads ******\n");
+    printf("**************************\n");
+
+    printf("Add  -  Operator  -  Source1  -  Source2  -  Desatination\n");
+    printf("----------------------------------------------------------\n");
+    g_list_foreach(quadList, (GFunc)printQuad, NULL);
+
+}
+
 main (){
     table = g_hash_table_new(g_str_hash, g_str_equal);
     yyparse();
     printTable();
+    printf("Tamanio lista quads: %d", g_list_length(quadList));
+    printQuadList();
 }
