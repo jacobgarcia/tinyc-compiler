@@ -19,6 +19,7 @@
     float fval;
     string str;
     struct symtab *symp;
+    struct conditional *cond;
 }
 // Tokens from tinyc_l
 %token INTEGER
@@ -50,10 +51,13 @@
 // Types of syntax rules
 %type <ival> type;
 %type <symp> simple_exp;
-%type <symp> exp;
 %type <symp> term;
 %type <symp> factor;
 %type <symp> variable;
+%type <ival> m;
+%type <cond> exp;
+%type <cond> n;
+%type <cond> stmt;
 
 %%
 program:				    var_dec stmt_seq {printf("\n\nCompilation successful\n\n");}
@@ -74,19 +78,33 @@ type:						INTEGER {
                                 $$ = FLO;
                             };
 
-stmt_seq:					stmt_seq stmt  |
+stmt_seq:					stmt_seq stmt {
+
+                            }|
 							;
 
-stmt:						IF exp THEN stmt  | IF exp THEN stmt ELSE stmt
-                    		| WHILE exp DO stmt  |
-                            variable ASSIGN exp SEMI {
+stmt:						IF exp THEN m stmt{
+                                backPatch($2->trueList, $4);
+                                $$->trueList = g_list_concat($2->falseList, $5->trueList);
+                            }|
+                            IF exp THEN m stmt n ELSE m stmt{
+                                backPatch($2->trueList, $4);
+                                backPatch($2->falseList, $8);
+                                GList *temp = g_list_concat($6->trueList, $9->trueList);
+                                $$->trueList = g_list_concat($5->trueList, temp);
+                            }|
+                            WHILE m exp DO m stmt{
+                                backPatch($3->trueList, $5);
+                                $$->trueList = $3->falseList;
+                                genGoTo($2);
+                            }|
+                            variable ASSIGN simple_exp SEMI {
                                 if ($1->type == -1){
                                     printf("ERROR at line %d: variable %s not declared \n",yylineno,$1->name);
                                     exit(1);
                                 }
                                 else {
                                     gen($3, NULL, ":=", $1);
-                                    printf("Called Gen (Assignment)\n");
                                     if ($1->type == INT){
                                         if ($3->type == FLO){
                                             printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
@@ -108,88 +126,57 @@ stmt:						IF exp THEN stmt  | IF exp THEN stmt ELSE stmt
                                     }
                                     //printf("Asignando %s a %f\n",$1->name,$1->value);
                                 }
+                            }|
+                            READ LPAREN variable RPAREN SEMI{
+
+                            }|
+                            WRITE LPAREN exp RPAREN SEMI{
+
+                            }|
+                            block{
+
                             }
-                    		| READ LPAREN variable RPAREN SEMI
-                    		| WRITE LPAREN exp RPAREN SEMI
-                    		| block
                     		;
 
-block:						LBRACE stmt_seq RBRACE
+block:						LBRACE stmt_seq RBRACE{
+
+                            }
 							;
 
-exp:						simple_exp LT simple_exp {
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    if($1->value.f < (float) $3->value.i) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    if((float) $1->value.i < $3->value.f) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    if($1->value.i < $3->value.i) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
-                                else {
-                                    if($1->value.f < $3->value.f) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
+exp:
+                            simple_exp RT simple_exp {
+                                conditional_p cond = malloc(sizeof(conditional_));
+                                quad_p temp = initGotoQuad(quadCounter);
+                                cond->trueList = g_list_append(cond->trueList, temp);
+                                temp = initGotoQuad(quadCounter);
+                                cond->falseList = g_list_append(cond->falseList, temp);
+                                gen($1, $3, "> goto", NULL);
+                                genGoTo(0);
+                                $$ = cond;
+                            }|
+                            simple_exp LT simple_exp {
+                                conditional_p cond = malloc(sizeof(conditional_));
+                                quad_p temp = initGotoQuad(quadCounter);
+                                cond->trueList = g_list_append(cond->trueList, temp);
+                                temp = initGotoQuad(quadCounter);
+                                cond->falseList = g_list_append(cond->falseList, temp);
+                                gen($1, $3, "< goto", NULL);
+                                genGoTo(0);
+                                $$ = cond;
                             }|
                             simple_exp EQ simple_exp  {
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    if($1->value.f == (float) $3->value.i) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    if((float) $1->value.i == $3->value.f) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    if($1->value.i == $3->value.i) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
-                                else {
-                                    if($1->value.f == $3->value.f) {
-                                        $$->value.i = 1;
-                                    }
-                                    else {
-                                        $$->value.i = 0;
-                                    }
-                                }
-                            }|
-                            simple_exp {
-                                $$ = $1;
+                                conditional_p cond = malloc(sizeof(conditional_));
+                                quad_p temp = initGotoQuad(quadCounter);
+                                cond->trueList = g_list_append(cond->trueList, temp);
+                                temp = initGotoQuad(quadCounter);
+                                cond->falseList = g_list_append(cond->falseList, temp);
+                                gen($1, $3, "== goto", NULL);
+                                genGoTo(0);
+                                $$ = cond;
+                            }|LPAREN exp RPAREN {
+                                $$ = $2;
                             };
+
 
 simple_exp:					simple_exp PLUS term {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
@@ -212,7 +199,6 @@ simple_exp:					simple_exp PLUS term {
                                     //
                                 }
                                 gen($1,$3,"+",temp);
-                                printf("Called Gen (Addition)\n");
                                 $$ = temp;
                             }
                             |
@@ -227,16 +213,15 @@ simple_exp:					simple_exp PLUS term {
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
                                     printf("Warning at line %d: substracting integers and floats\n", yylineno);
-                                    
+
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
                                     temp->type = INT;
                                 }
                                 else {
-                                    
+
                                 }
                                 gen($1,$3,"-",temp);
-                                printf("Called Gen (Substraction)\n");
                                 $$ = temp;
                             }|
                             term {
@@ -259,10 +244,9 @@ term:						term TIMES factor {
                                     temp->type = INT;
                                 }
                                 else {
-                                    temp->type = FLO;                                    
+                                    temp->type = FLO;
                                 }
                                 gen($1,$3,"*",temp);
-                                printf("Called Gen (Mult)\n");
                                 $$ = temp;
                             }|
                             term DIV factor {
@@ -284,17 +268,13 @@ term:						term TIMES factor {
                                     temp->type = FLO;
                                 }
                                 gen($1,$3,"/",temp);
-                                printf("Called Gen (Division)\n");
                                 $$ = temp;
                             }|
                             factor {
                                 $$ = $1;
                             };
 
-factor:						LPAREN exp RPAREN {
-                                $$ = $2;
-                            }|
-                            INT_NUM {
+factor:					    INT_NUM {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
@@ -316,6 +296,16 @@ factor:						LPAREN exp RPAREN {
 
 variable:					ID {
                                 $$ = symlook($1);
+                            };
+
+m:                          {
+                                $$ = quadCounter + 1;
+                            };
+
+n:                          {
+                                quad_p temp = initGotoQuad(0);
+                                $$->trueList = g_list_append($$->trueList, temp);
+                                genGoTo(0);
                             };
 
 %%
@@ -364,17 +354,37 @@ void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry
     }else{
     	newQuad->source2 = NULL;
     }
-    newQuad->destination = destination;    
+    newQuad->destination = destination;
     newQuad->op = op;
 
     //Caution: may have errors
     newQuad->address = quadCounter++;
-    quadList = g_list_append(quadList, newQuad);
-    printf("Added\n");
-    
+    quadList = g_array_append_val(quadList, newQuad);
 }
 
-void printItem(gpointer key, gpointer value, gpointer user_data){
+void genGoTo(unsigned int address){
+    symtab_entry_p temp = malloc(sizeof(symtab_entry_));
+    quad_p newQuad = initGotoQuad(address);
+
+    //Caution: may have errors
+    printf("Added: GoTO and Address: %d\n ", quadCounter);
+    newQuad->next = quadCounter;
+    quadList = g_array_append_val(quadList, newQuad);
+}
+
+void backPatchItem(gpointer data, gpointer user_data){
+    int address = (int)user_data;
+    quad_p quad = (quad_p)data;
+    if(strcmp(quad->op, "goto") && (quad->next == 0)){
+        quad->next = address;
+    }
+}
+
+void backPatch(GList *list, unsigned int address){
+    g_list_foreach(list, (GFunc) backPatchItem, (gpointer)address);
+}
+
+void printSymbolItem(gpointer key, gpointer value, gpointer user_data){
     symtab_entry_p item = (symtab_entry_p) value;
     //printf("%s -> %s -> %f\n",item->name, printType(item->type), item->value);
     printf("%5s  %10s\n",item->name, printType(item->type));
@@ -388,38 +398,62 @@ string printType(int type){
     }
 }
 
-void printTable(){
+void printSymbolTable(){
     printf("\n**************************\n");
 	printf("****** Symbol Table ******\n");
     printf("**************************\n");
 
-    g_hash_table_foreach(table, (GHFunc)printItem, NULL);
+    g_hash_table_foreach(table, (GHFunc)printSymbolItem, NULL);
 }
 
-void printQuad(gpointer value, gpointer user_data){
-    quad_p item = (quad_p) value;
-    if(item->source2 != NULL){
-    	printf("%2d %9s %12s %11s %13s\n",item->address, item->op, item->source1->name, item->source2->name, item->destination->name);
-    }else{
-    	printf("%2d %9s %12s %11s %13s\n",item->address, item->op, item->source1->name, " ", item->destination->name);
-    }    
-}
 
 void printQuadList(){
     printf("\n**************************\n");
     printf("****** Quads ******\n");
     printf("**************************\n");
 
-    printf("Add  -  Operator  -  Source1  -  Source2  -  Desatination\n");
-    printf("----------------------------------------------------------\n");
-    g_list_foreach(quadList, (GFunc)printQuad, NULL);
+    printf("Add  -  Operator  -  Source1  -  Source2  -  Destination  -  Next\n");
+    printf("-------------------------------------------------------------------\n");
+    int i=0;
+    for(i; i < quadList->len; i++){
+        quad_p item = g_array_index(quadList, quad_p, i);
+        if(item->source1 == NULL){
+            printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op, " ",
+                    " ", " ", item->next);
+        }
+        else if(item->source2 != NULL){
+            if(item->destination == NULL){
+                printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+                item->source1->name, item->source2->name, " ");
+            }else{
+                printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+                item->source1->name, item->source2->name, item->destination->name);
+            }
+        }else{
+        	printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+            item->source1->name, " ", item->destination->name);
+        }
+    }
 
+}
+
+quad_p initGotoQuad(int address){
+    quad_p temp = malloc(sizeof(quad_));
+
+    temp->address = quadCounter++;
+    temp->next = address;
+    temp->source1 = NULL;
+    temp->source2 = NULL;
+    temp->destination = NULL;
+    temp->op = "goto";
+
+    return temp;
 }
 
 main (){
     table = g_hash_table_new(g_str_hash, g_str_equal);
+    quadList = g_array_new(FALSE, FALSE, sizeof(quad_p));
     yyparse();
-    printTable();
-    printf("Tamanio lista quads: %d", g_list_length(quadList));
+    printSymbolTable();
     printQuadList();
 }

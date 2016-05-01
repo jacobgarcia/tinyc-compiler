@@ -25,30 +25,40 @@ struct symtab {
   union num_type value;                          /* The value is a float */
   int type;                           /* The value is a float */
 } symtab_entry_;
-
 typedef char * string;
 typedef struct symtab *symtab_entry_p;
+
+struct conditional {
+    GList *trueList;
+    GList *falseList;
+} conditional_;
+typedef struct conditional *conditional_p;
 
 
 struct quad{
 	symtab_entry_p source1, source2, destination;
-	int address;
+	unsigned int address;
 	string op;
+    unsigned int next;
 } quad_;
 
 typedef struct quad *quad_p;
 
 GHashTable *table;
-GList *quadList = NULL;
-int quadCounter = 0;
+GArray *quadList = NULL;
+int quadCounter = 1;
 int tempCounter = 0;
-char integerString[4];
+char integerString[10];
 
 void equal_hash(gconstpointer a, gconstpointer b);
 
 /* Function prototype for the symbol table look up routine */
+void genGoTo(unsigned int address);
 void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination);
+quad_p initGotoQuad(int address);
+void backPatch(GList *list, unsigned int address);
 symtab_entry_p symbAdd(string s);
 symtab_entry_p symlook(string s);
 string printType(int type);
-void printTable();
+void printSymbolTable();
+void printQuadList();

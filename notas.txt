@@ -1,0 +1,7 @@
+- Exp va a dejar de ser symp
+- Asignar en exp, las goto a true y false       
+
+- Dentro de las reglas de exp, remover simple_exp
+- Dentro de los statements, sustituir exp por simple_exp
+
+- Cambiar el int del address a un unsigned int
