@@ -98,7 +98,8 @@ stmt:						IF exp THEN m stmt{
                                 printList($3->trueList, "TrueList");
                                 backPatch($3->trueList, $5);
                                 $$->trueList = $3->falseList;
-                                genGoTo($2);
+                                quad_p temp = genGoTo($2);
+                                backPatch($3->falseList, temp->address+1);
                             }|
                             variable ASSIGN simple_exp SEMI {
                                 if ($1->type == -1){
@@ -299,7 +300,7 @@ variable:					ID {
                             };
 
 m:                          {
-                                $$ = quadCounter + 1;
+                                $$ = quadCounter;
                             };
 
 n:                          {
@@ -386,6 +387,7 @@ quad_p gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_ent
     if(destination == NULL){
         printf("Created Goto comparison at address: %d\n", quadCounter);
         newQuad->next = 0;
+        printf("Hexa Address: %p value: %d\n", &newQuad->next, newQuad->next);
     }
 
     //Caution: may have errors
@@ -400,7 +402,7 @@ quad_p genGoTo(unsigned int address){
     quad_p newQuad = initGotoQuad(address);
 
     //Caution: may have errors
-    printf("Added GoTO in line %d with next: %d\n ", quadCounter-1, address);
+    printf("Added GoTO in line %d with next: %d\n ", quadCounter, address);
     return newQuad;
 }
 
@@ -456,8 +458,8 @@ void printQuadList(){
         }
         else if(item->source2 != NULL){
             if(item->destination == NULL){
-                printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
-                item->source1->name, item->source2->name, " ");
+                printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op,
+                item->source1->name, item->source2->name, " ", item->next);
             }else{
                 printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
                 item->source1->name, item->source2->name, item->destination->name);

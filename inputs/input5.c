@@ -20,9 +20,12 @@ int h7;
   while (i < 10) do {
      j := i*10;
      i := i+1;
+     i := j+i;
+     i := j+i;
+     i := j+i;
+     i := j+i;
   }
 
  h := j/i;
  h2 := h / 10.0;
  h := 100*h;
-
