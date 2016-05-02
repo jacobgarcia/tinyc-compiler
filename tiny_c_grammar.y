@@ -18,8 +18,9 @@
     int ival;
     float fval;
     string str;
-    struct symtab *symp;
-    struct conditional *cond;
+    symtab_entry_p symp;
+    conditional_p cond;
+    conditionalPrime_p condPrime;
 }
 // Tokens from tinyc_l
 %token INTEGER
@@ -58,6 +59,7 @@
 %type <cond> exp;
 %type <cond> n;
 %type <cond> stmt;
+%type <condPrime> stmt_prime;
 
 %%
 program:				    var_dec stmt_seq {printf("\n\nCompilation successful\n\n");}
@@ -83,15 +85,27 @@ stmt_seq:					stmt_seq stmt {
                             }|
 							;
 
-stmt:						IF exp THEN m stmt{
+stmt_prime:                 ELSE m stmt{
+                                $$->list = $3->trueList;
+                                $$->m = $2;
+                            }|{
+                                $$ = NULL;
+                            };
+
+stmt:						IF exp THEN m stmt n stmt_prime{
                                 backPatch($2->trueList, $4);
-                                $$->trueList = g_list_concat($2->falseList, $5->trueList);
-                            }|
-                            IF exp THEN m stmt n ELSE m stmt{
-                                backPatch($2->trueList, $4);
-                                backPatch($2->falseList, $8);
-                                GList *temp = g_list_concat($6->trueList, $9->trueList);
-                                $$->trueList = g_list_concat($5->trueList, temp);
+                                if(NULL != $7){
+                                    GList *temp = g_list_concat($6->trueList, $7->list);
+                                    backPatch($2->falseList, $7->m);
+                                    $$->trueList = g_list_concat($5->trueList, $7->list);
+                                }else{
+                                    GList *tempList = NULL;
+                                    printList($2->falseList, "2 falseList: ");
+                                    printList($5->trueList, "5 trueList: ");
+                                    tempList = g_list_concat($2->falseList, $6->trueList);
+                                    $$->trueList = tempList;
+                                }
+
                             }|
                             WHILE m exp DO m stmt{
                                 printf("Call to backpatch with address:%d\n", $5);
@@ -149,12 +163,10 @@ block:						LBRACE stmt_seq RBRACE{
 exp:
                             simple_exp RT simple_exp {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = initGotoQuad(quadCounter);
+                                quad_p temp = gen($1, $3, "> goto", NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
-                                temp = initGotoQuad(quadCounter+1);
+                                temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
-                                gen($1, $3, "> goto", NULL);
-                                genGoTo(0);
                                 $$ = cond;
                             }|
                             simple_exp LT simple_exp {
@@ -167,12 +179,10 @@ exp:
                             }|
                             simple_exp EQ simple_exp  {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = initGotoQuad(quadCounter);
+                                quad_p temp = gen($1, $3, "== goto", NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
-                                temp = initGotoQuad(quadCounter+1);
+                                temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
-                                gen($1, $3, "== goto", NULL);
-                                genGoTo(0);
                                 $$ = cond;
                             }|LPAREN exp RPAREN {
                                 $$ = $2;
@@ -304,9 +314,12 @@ m:                          {
                             };
 
 n:                          {
-                                quad_p temp = initGotoQuad(0);
-                                $$->trueList = g_list_append($$->trueList, temp);
-                                genGoTo(0);
+                                conditional_p cond = malloc(sizeof(conditional_));
+                                quad_p temp = genGoTo(0);
+                                GList *test = NULL;
+                                test = g_list_append(test, temp);
+                                cond->trueList = test;
+                                $$ = cond;
                             };
 
 %%
@@ -402,7 +415,7 @@ quad_p genGoTo(unsigned int address){
     quad_p newQuad = initGotoQuad(address);
 
     //Caution: may have errors
-    printf("Added GoTO in line %d with next: %d\n ", quadCounter, address);
+    printf("Added GoTO in line %d with next: %d\n", quadCounter, address);
     return newQuad;
 }
 

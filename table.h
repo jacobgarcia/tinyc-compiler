@@ -41,8 +41,13 @@ struct quad{
 	string op;
     unsigned int next;
 } quad_;
-
 typedef struct quad *quad_p;
+
+struct conditionalPrime{
+    GList *list;
+    int m;
+}conditionalPrime_;
+typedef struct conditionalPrime * conditionalPrime_p;
 
 GHashTable *table;
 GArray *quadList = NULL;
