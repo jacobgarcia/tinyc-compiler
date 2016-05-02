@@ -53,8 +53,8 @@ char integerString[10];
 void equal_hash(gconstpointer a, gconstpointer b);
 
 /* Function prototype for the symbol table look up routine */
-void genGoTo(unsigned int address);
-void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination);
+quad_p genGoTo(unsigned int address);
+quad_p gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination);
 quad_p initGotoQuad(int address);
 void backPatch(GList *list, unsigned int address);
 symtab_entry_p symbAdd(string s);
@@ -62,3 +62,4 @@ symtab_entry_p symlook(string s);
 string printType(int type);
 void printSymbolTable();
 void printQuadList();
+void printList(GList *list, char *listName);

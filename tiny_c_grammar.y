@@ -94,6 +94,8 @@ stmt:						IF exp THEN m stmt{
                                 $$->trueList = g_list_concat($5->trueList, temp);
                             }|
                             WHILE m exp DO m stmt{
+                                printf("Call to backpatch with address:%d\n", $5);
+                                printList($3->trueList, "TrueList");
                                 backPatch($3->trueList, $5);
                                 $$->trueList = $3->falseList;
                                 genGoTo($2);
@@ -107,7 +109,7 @@ stmt:						IF exp THEN m stmt{
                                     gen($3, NULL, ":=", $1);
                                     if ($1->type == INT){
                                         if ($3->type == FLO){
-                                            printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
+                                            //printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
                                             $1->value  = $3->value;
                                         }
                                         else {
@@ -117,7 +119,7 @@ stmt:						IF exp THEN m stmt{
                                     else{
                                         $1->value  = $3->value;
                                         if ($3->type == INT){
-                                            printf("Warning at line %d: assigning integer to %s, conversion will be done\n", yylineno, $1->name);
+                                            //printf("Warning at line %d: assigning integer to %s, conversion will be done\n", yylineno, $1->name);
                                             $1->value  = $3->value;
                                         }
                                         else {
@@ -148,7 +150,7 @@ exp:
                                 conditional_p cond = malloc(sizeof(conditional_));
                                 quad_p temp = initGotoQuad(quadCounter);
                                 cond->trueList = g_list_append(cond->trueList, temp);
-                                temp = initGotoQuad(quadCounter);
+                                temp = initGotoQuad(quadCounter+1);
                                 cond->falseList = g_list_append(cond->falseList, temp);
                                 gen($1, $3, "> goto", NULL);
                                 genGoTo(0);
@@ -156,19 +158,17 @@ exp:
                             }|
                             simple_exp LT simple_exp {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = initGotoQuad(quadCounter);
+                                quad_p temp = gen($1, $3, "< goto", NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
-                                temp = initGotoQuad(quadCounter);
+                                temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
-                                gen($1, $3, "< goto", NULL);
-                                genGoTo(0);
                                 $$ = cond;
                             }|
                             simple_exp EQ simple_exp  {
                                 conditional_p cond = malloc(sizeof(conditional_));
                                 quad_p temp = initGotoQuad(quadCounter);
                                 cond->trueList = g_list_append(cond->trueList, temp);
-                                temp = initGotoQuad(quadCounter);
+                                temp = initGotoQuad(quadCounter+1);
                                 cond->falseList = g_list_append(cond->falseList, temp);
                                 gen($1, $3, "== goto", NULL);
                                 genGoTo(0);
@@ -185,11 +185,11 @@ simple_exp:					simple_exp PLUS term {
                                 temp->name = strdup(integerString);
 
                                 if (($1->type == FLO  && $3->type == INT)){
-                                    printf("Warning at line %d: adding integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: adding integers and floats\n", yylineno);
 
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
-                                    printf("Warning at line %d: adding integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: adding integers and floats\n", yylineno);
 
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
@@ -208,11 +208,11 @@ simple_exp:					simple_exp PLUS term {
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
-                                    printf("Warning at line %d: substracting integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: substracting integers and floats\n", yylineno);
 
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
-                                    printf("Warning at line %d: substracting integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: substracting integers and floats\n", yylineno);
 
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
@@ -233,11 +233,11 @@ term:						term TIMES factor {
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
-                                    printf("Warning at line %d: multiplying integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: multiplying integers and floats\n", yylineno);
                                     temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
-                                    printf("Warning at line %d: multiplying integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: multiplying integers and floats\n", yylineno);
                                     temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
@@ -254,11 +254,11 @@ term:						term TIMES factor {
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
                                 if (($1->type == FLO  && $3->type == INT)){
-                                    printf("Warning at line %d: dividing integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: dividing integers and floats\n", yylineno);
                                     temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == FLO){
-                                    printf("Warning at line %d: dividing integers and floats\n", yylineno);
+                                    //printf("Warning at line %d: dividing integers and floats\n", yylineno);
                                     temp->type = FLO;
                                 }
                                 else if ($1->type == INT  && $3->type == INT){
@@ -313,6 +313,31 @@ n:                          {
 /* This is where the flex is included */
 #include "lex.yy.c"
 
+void printListItem(gpointer data, gpointer userData){
+    quad_p item = (quad_p)data;
+    if(item->source1 == NULL){
+        printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op, " ",
+                " ", " ", item->next);
+    }
+    else if(item->source2 != NULL){
+        if(item->destination == NULL){
+            printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+            item->source1->name, item->source2->name, " ");
+        }else{
+            printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+            item->source1->name, item->source2->name, item->destination->name);
+        }
+    }else{
+        printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+        item->source1->name, " ", item->destination->name);
+    }
+}
+
+void printList(GList *list, char *listName){
+    printf("Printing %s \n", listName);
+    g_list_foreach(list, (GFunc)printListItem, NULL);
+}
+
 /* Bison does NOT implement yyerror, so define it here */
 void yyerror (char *string){
     //Printing line where conflict was found. Subtracted to fix variable
@@ -346,7 +371,7 @@ symtab_entry_p symlook(string s) {
     }
 }
 
-void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination){
+quad_p gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination){
     quad_p newQuad = malloc(sizeof(quad_));
     newQuad->source1 = source1;
     if(source2 != NULL){
@@ -354,28 +379,36 @@ void gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry
     }else{
     	newQuad->source2 = NULL;
     }
+
     newQuad->destination = destination;
     newQuad->op = op;
 
+    if(destination == NULL){
+        printf("Created Goto comparison at address: %d\n", quadCounter);
+        newQuad->next = 0;
+    }
+
     //Caution: may have errors
     newQuad->address = quadCounter++;
+
     quadList = g_array_append_val(quadList, newQuad);
+    return newQuad;
 }
 
-void genGoTo(unsigned int address){
+quad_p genGoTo(unsigned int address){
     symtab_entry_p temp = malloc(sizeof(symtab_entry_));
     quad_p newQuad = initGotoQuad(address);
 
     //Caution: may have errors
-    printf("Added: GoTO and Address: %d\n ", quadCounter);
-    newQuad->next = quadCounter;
-    quadList = g_array_append_val(quadList, newQuad);
+    printf("Added GoTO in line %d with next: %d\n ", quadCounter-1, address);
+    return newQuad;
 }
 
 void backPatchItem(gpointer data, gpointer user_data){
     int address = (int)user_data;
     quad_p quad = (quad_p)data;
-    if(strcmp(quad->op, "goto") && (quad->next == 0)){
+    if((strcmp(quad->op, "goto")||strcmp(quad->op, "< goto")||strcmp(quad->op, "> goto") ||strcmp(quad->op, "== goto")) && (quad->next == 0)){
+        printf("Quad number %d is changing next from %d to %d\n", quad->address, quad->next, address);
         quad->next = address;
     }
 }
@@ -447,6 +480,7 @@ quad_p initGotoQuad(int address){
     temp->destination = NULL;
     temp->op = "goto";
 
+    quadList = g_array_append_val(quadList, temp);
     return temp;
 }
 
@@ -454,6 +488,6 @@ main (){
     table = g_hash_table_new(g_str_hash, g_str_equal);
     quadList = g_array_new(FALSE, FALSE, sizeof(quad_p));
     yyparse();
-    printSymbolTable();
+    //printSymbolTable();
     printQuadList();
 }
