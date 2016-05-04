@@ -121,7 +121,7 @@ stmt:						IF exp THEN m stmt n stmt_prime{
                                     exit(1);
                                 }
                                 else {
-                                    gen($3, NULL, ":=", $1);
+                                    gen($3, NULL, ASSIGNING, $1);
                                     if ($1->type == INT){
                                         if ($3->type == FLO){
                                             //printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
@@ -163,7 +163,7 @@ block:						LBRACE stmt_seq RBRACE{
 exp:
                             simple_exp RT simple_exp {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = gen($1, $3, "> goto", NULL);
+                                quad_p temp = gen($1, $3, RT_GOTO, NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
                                 temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
@@ -171,7 +171,7 @@ exp:
                             }|
                             simple_exp LT simple_exp {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = gen($1, $3, "< goto", NULL);
+                                quad_p temp = gen($1, $3, LT_GOTO, NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
                                 temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
@@ -179,7 +179,7 @@ exp:
                             }|
                             simple_exp EQ simple_exp  {
                                 conditional_p cond = malloc(sizeof(conditional_));
-                                quad_p temp = gen($1, $3, "== goto", NULL);
+                                quad_p temp = gen($1, $3, EQ_GOTO, NULL);
                                 cond->trueList = g_list_append(cond->trueList, temp);
                                 temp = genGoTo(0);
                                 cond->falseList = g_list_append(cond->falseList, temp);
@@ -209,7 +209,7 @@ simple_exp:					simple_exp PLUS term {
                                 else {
                                     //
                                 }
-                                gen($1,$3,"+",temp);
+                                gen($1,$3,ADD,temp);
                                 $$ = temp;
                             }
                             |
@@ -232,7 +232,7 @@ simple_exp:					simple_exp PLUS term {
                                 else {
 
                                 }
-                                gen($1,$3,"-",temp);
+                                gen($1,$3,SUBSTRACT,temp);
                                 $$ = temp;
                             }|
                             term {
@@ -257,7 +257,7 @@ term:						term TIMES factor {
                                 else {
                                     temp->type = FLO;
                                 }
-                                gen($1,$3,"*",temp);
+                                gen($1,$3,MULT,temp);
                                 $$ = temp;
                             }|
                             term DIV factor {
@@ -278,7 +278,7 @@ term:						term TIMES factor {
                                 else {
                                     temp->type = FLO;
                                 }
-                                gen($1,$3,"/",temp);
+                                gen($1,$3,DIVIDE,temp);
                                 $$ = temp;
                             }|
                             factor {
@@ -291,6 +291,7 @@ factor:					    INT_NUM {
                                 temp->name = strdup(integerString);
                                 temp->type = INT;
                                 temp->value.i = $1;
+                                printf("Checking int value %d\n",$1);
                                 $$ = temp;
                             }|
                             FLOAT_NUM {
@@ -327,22 +328,45 @@ n:                          {
 /* This is where the flex is included */
 #include "lex.yy.c"
 
+string translateOp(int op){
+    switch(op){
+        case ADD:
+            return "+";
+        case SUBSTRACT:
+            return "-";
+        case MULT:
+            return "*";
+        case DIVIDE:
+            return "/";
+        case LT_GOTO:
+            return "< goto";
+        case RT_GOTO:
+            return "> goto";
+        case GOTO:
+            return "goto";
+        case EQ_GOTO:
+            return "== goto";
+        case ASSIGNING:
+            return ":=";
+    }
+}
+
 void printListItem(gpointer data, gpointer userData){
     quad_p item = (quad_p)data;
     if(item->source1 == NULL){
-        printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op, " ",
+        printf("%2d %9s %12s %11s %13s %12d\n",item->address, translateOp(item->op), " ",
                 " ", " ", item->next);
     }
     else if(item->source2 != NULL){
         if(item->destination == NULL){
-            printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+            printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
             item->source1->name, item->source2->name, " ");
         }else{
-            printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+            printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
             item->source1->name, item->source2->name, item->destination->name);
         }
     }else{
-        printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+        printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
         item->source1->name, " ", item->destination->name);
     }
 }
@@ -385,7 +409,7 @@ symtab_entry_p symlook(string s) {
     }
 }
 
-quad_p gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination){
+quad_p gen(symtab_entry_p source1, symtab_entry_p source2, int op, symtab_entry_p destination){
     quad_p newQuad = malloc(sizeof(quad_));
     newQuad->source1 = source1;
     if(source2 != NULL){
@@ -422,7 +446,7 @@ quad_p genGoTo(unsigned int address){
 void backPatchItem(gpointer data, gpointer user_data){
     int address = (int)user_data;
     quad_p quad = (quad_p)data;
-    if((strcmp(quad->op, "goto")||strcmp(quad->op, "< goto")||strcmp(quad->op, "> goto") ||strcmp(quad->op, "== goto")) && (quad->next == 0)){
+    if((quad->op == GOTO||quad->op == LT_GOTO||quad->op == RT_GOTO ||quad->op == EQ_GOTO) && (quad->next == 0)){
         printf("Quad number %d is changing next from %d to %d\n", quad->address, quad->next, address);
         quad->next = address;
     }
@@ -466,19 +490,19 @@ void printQuadList(){
     for(i; i < quadList->len; i++){
         quad_p item = g_array_index(quadList, quad_p, i);
         if(item->source1 == NULL){
-            printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op, " ",
+            printf("%2d %9s %12s %11s %13s %12d\n",item->address, translateOp(item->op), " ",
                     " ", " ", item->next);
         }
         else if(item->source2 != NULL){
             if(item->destination == NULL){
-                printf("%2d %9s %12s %11s %13s %12d\n",item->address, item->op,
+                printf("%2d %9s %12s %11s %13s %12d\n",item->address, translateOp(item->op),
                 item->source1->name, item->source2->name, " ", item->next);
             }else{
-                printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+                printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
                 item->source1->name, item->source2->name, item->destination->name);
             }
         }else{
-        	printf("%2d %9s %12s %11s %13s\n",item->address, item->op,
+        	printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
             item->source1->name, " ", item->destination->name);
         }
     }
@@ -493,10 +517,41 @@ quad_p initGotoQuad(int address){
     temp->source1 = NULL;
     temp->source2 = NULL;
     temp->destination = NULL;
-    temp->op = "goto";
+    temp->op = GOTO;
 
     quadList = g_array_append_val(quadList, temp);
     return temp;
+}
+
+void interpreter(){
+    int i=0;
+    for(i; i < quadList->len; i++){
+        quad_p quad = g_array_index(quadList, quad_p, i);
+        if(quad->source1->type == INT){
+                printf("Value: %d\n", quad->source1->value.i);
+        }
+
+        /*switch(quad->op){
+            case ADD:
+
+            case SUBSTRACT:
+                return "-";
+            case MULT:
+                return "*";
+            case DIVIDE:
+                return "/";
+            case LT_GOTO:
+                return "< goto";
+            case RT_GOTO:
+                return "> goto";
+            case GOTO:
+                return "goto";
+            case EQ_GOTO:
+                return "== goto";
+            case ASSIGNING:
+                return ":=";
+        }*/
+    }
 }
 
 main (){
@@ -504,5 +559,7 @@ main (){
     quadList = g_array_new(FALSE, FALSE, sizeof(quad_p));
     yyparse();
     //printSymbolTable();
+    interpreter();
     printQuadList();
+
 }

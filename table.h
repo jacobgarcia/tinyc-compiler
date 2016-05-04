@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 enum type_
 {
     INT, FLO
@@ -19,6 +20,17 @@ union num_type{
     float f;
 };
 
+enum operator_{
+    ADD,
+    SUBSTRACT,
+    MULT,
+    DIVIDE,
+    LT_GOTO,
+    RT_GOTO,
+    GOTO,
+    EQ_GOTO,
+    ASSIGNING
+};
 
 struct symtab {
   char *name;                    /* The name is just the string */
@@ -38,7 +50,7 @@ typedef struct conditional *conditional_p;
 struct quad{
 	symtab_entry_p source1, source2, destination;
 	unsigned int address;
-	string op;
+	unsigned int op;
     unsigned int next;
 } quad_;
 typedef struct quad *quad_p;
@@ -59,7 +71,7 @@ void equal_hash(gconstpointer a, gconstpointer b);
 
 /* Function prototype for the symbol table look up routine */
 quad_p genGoTo(unsigned int address);
-quad_p gen(symtab_entry_p source1, symtab_entry_p source2, string op, symtab_entry_p destination);
+quad_p gen(symtab_entry_p source1, symtab_entry_p source2, int op, symtab_entry_p destination);
 quad_p initGotoQuad(int address);
 void backPatch(GList *list, unsigned int address);
 symtab_entry_p symbAdd(string s);
@@ -68,3 +80,4 @@ string printType(int type);
 void printSymbolTable();
 void printQuadList();
 void printList(GList *list, char *listName);
+string translateOp(int op);
