@@ -55,12 +55,6 @@ struct quad{
 } quad_;
 typedef struct quad *quad_p;
 
-struct conditionalPrime{
-    GList *list;
-    int m;
-}conditionalPrime_;
-typedef struct conditionalPrime * conditionalPrime_p;
-
 GHashTable *table;
 GArray *quadList = NULL;
 int quadCounter = 1;
@@ -81,3 +75,4 @@ void printSymbolTable();
 void printQuadList();
 void printList(GList *list, char *listName);
 string translateOp(int op);
+void checkTypeCompilation(symtab_entry_p s1, symtab_entry_p s2, symtab_entry_p d, string s);

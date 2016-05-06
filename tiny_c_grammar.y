@@ -20,7 +20,6 @@
     string str;
     symtab_entry_p symp;
     conditional_p cond;
-    conditionalPrime_p condPrime;
 }
 // Tokens from tinyc_l
 %token INTEGER
@@ -59,7 +58,6 @@
 %type <cond> exp;
 %type <cond> n;
 %type <cond> stmt;
-%type <condPrime> stmt_prime;
 
 %%
 program:				    var_dec stmt_seq {printf("\n\nCompilation successful\n\n");}
@@ -85,33 +83,24 @@ stmt_seq:					stmt_seq stmt {
                             }|
 							;
 
-stmt_prime:                 ELSE m stmt{
-                                $$->list = $3->trueList;
-                                $$->m = $2;
-                            }|{
-                                $$ = NULL;
-                            };
-
-stmt:						IF exp THEN m stmt n stmt_prime{
+stmt:						IF exp THEN m stmt n ELSE m stmt m{
                                 backPatch($2->trueList, $4);
-                                if(NULL != $7){
-                                    GList *temp = g_list_concat($6->trueList, $7->list);
-                                    backPatch($2->falseList, $7->m);
-                                    $$->trueList = g_list_concat($5->trueList, $7->list);
-                                }else{
-                                    GList *tempList = NULL;
-                                    printList($2->falseList, "2 falseList: ");
-                                    printList($5->trueList, "5 trueList: ");
-                                    tempList = g_list_concat($2->falseList, $6->trueList);
-                                    $$->trueList = tempList;
-                                }
-
+                                backPatch($2->falseList, $8);
+                                GList *temp = NULL;
+                                temp = g_list_concat($6->trueList, $9->trueList);
+                                temp = g_list_concat($5->trueList, temp);
+                                conditional_p list = malloc(sizeof(conditional_));
+                                list->trueList = temp;
+                                $$ = list;
+                                backPatch($6->trueList, $10);
                             }|
                             WHILE m exp DO m stmt{
-                                printf("Call to backpatch with address:%d\n", $5);
-                                printList($3->trueList, "TrueList");
+                                //printList($3->trueList, "TrueList");
                                 backPatch($3->trueList, $5);
-                                $$->trueList = $3->falseList;
+                                //printList($3->falseList, "falseList");
+                                conditional_p list = malloc(sizeof(conditional_));
+                                list->trueList = $3->falseList;
+                                $$ = list;
                                 quad_p temp = genGoTo($2);
                                 backPatch($3->falseList, temp->address+1);
                             }|
@@ -124,24 +113,15 @@ stmt:						IF exp THEN m stmt n stmt_prime{
                                     gen($3, NULL, ASSIGNING, $1);
                                     if ($1->type == INT){
                                         if ($3->type == FLO){
-                                            //printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
-                                            $1->value  = $3->value;
-                                        }
-                                        else {
-                                            $1->value  = $3->value;
+                                            printf("Warning at line %d: assigning float to %s, precision will be lost\n", yylineno, $1->name);
                                         }
                                     }
                                     else{
-                                        $1->value  = $3->value;
+
                                         if ($3->type == INT){
-                                            //printf("Warning at line %d: assigning integer to %s, conversion will be done\n", yylineno, $1->name);
-                                            $1->value  = $3->value;
-                                        }
-                                        else {
-                                            $1->value  = $3->value;
+                                            printf("Warning at line %d: assigning integer to %s, conversion will be done\n", yylineno, $1->name);
                                         }
                                     }
-                                    //printf("Asignando %s a %f\n",$1->name,$1->value);
                                 }
                             }|
                             READ LPAREN variable RPAREN SEMI{
@@ -151,7 +131,10 @@ stmt:						IF exp THEN m stmt n stmt_prime{
 
                             }|
                             block{
-
+                                conditional_p list = malloc(sizeof(conditional_));
+                                list->trueList = NULL;
+                                list->falseList = NULL;
+                                $$ = list;
                             }
                     		;
 
@@ -194,21 +177,7 @@ simple_exp:					simple_exp PLUS term {
                                 temp->type = FLO;
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
-
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    //printf("Warning at line %d: adding integers and floats\n", yylineno);
-
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    //printf("Warning at line %d: adding integers and floats\n", yylineno);
-
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    temp->type = INT;
-                                }
-                                else {
-                                    //
-                                }
+                                checkTypeCompilation($1,$3,temp,"adding");
                                 gen($1,$3,ADD,temp);
                                 $$ = temp;
                             }
@@ -218,20 +187,7 @@ simple_exp:					simple_exp PLUS term {
                                 temp->type = FLO;
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    //printf("Warning at line %d: substracting integers and floats\n", yylineno);
-
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    //printf("Warning at line %d: substracting integers and floats\n", yylineno);
-
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    temp->type = INT;
-                                }
-                                else {
-
-                                }
+                                checkTypeCompilation($1,$3,temp,"substracting");
                                 gen($1,$3,SUBSTRACT,temp);
                                 $$ = temp;
                             }|
@@ -243,20 +199,7 @@ term:						term TIMES factor {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    //printf("Warning at line %d: multiplying integers and floats\n", yylineno);
-                                    temp->type = FLO;
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    //printf("Warning at line %d: multiplying integers and floats\n", yylineno);
-                                    temp->type = FLO;
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    temp->type = INT;
-                                }
-                                else {
-                                    temp->type = FLO;
-                                }
+                                checkTypeCompilation($1,$3,temp,"multiplying");
                                 gen($1,$3,MULT,temp);
                                 $$ = temp;
                             }|
@@ -264,20 +207,7 @@ term:						term TIMES factor {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
-                                if (($1->type == FLO  && $3->type == INT)){
-                                    //printf("Warning at line %d: dividing integers and floats\n", yylineno);
-                                    temp->type = FLO;
-                                }
-                                else if ($1->type == INT  && $3->type == FLO){
-                                    //printf("Warning at line %d: dividing integers and floats\n", yylineno);
-                                    temp->type = FLO;
-                                }
-                                else if ($1->type == INT  && $3->type == INT){
-                                    temp->type = INT;
-                                }
-                                else {
-                                    temp->type = FLO;
-                                }
+                                checkTypeCompilation($1,$3,temp,"dividing");
                                 gen($1,$3,DIVIDE,temp);
                                 $$ = temp;
                             }|
@@ -291,7 +221,7 @@ factor:					    INT_NUM {
                                 temp->name = strdup(integerString);
                                 temp->type = INT;
                                 temp->value.i = $1;
-                                printf("Checking int value %d\n",$1);
+                                //printf("Checking int value %d\n",$1);
                                 $$ = temp;
                             }|
                             FLOAT_NUM {
@@ -328,6 +258,23 @@ n:                          {
 /* This is where the flex is included */
 #include "lex.yy.c"
 
+void checkTypeCompilation(symtab_entry_p s1, symtab_entry_p s2, symtab_entry_p d, string s){
+    if ((s1->type == FLO  && s2->type == INT)){
+        printf("Warning at line %d: %s integers and floats\n", yylineno, s);
+        d->type = FLO;
+    }
+    else if (s1->type == INT  && s2->type == FLO){
+        printf("Warning at line %d: %s integers and floats\n", yylineno, s);
+        d->type = FLO;
+    }
+    else if (s1->type == INT  && s2->type == INT){
+        d->type = INT;
+    }
+    else {
+        d->type = FLO;
+    }
+}
+
 string translateOp(int op){
     switch(op){
         case ADD:
@@ -339,13 +286,13 @@ string translateOp(int op){
         case DIVIDE:
             return "/";
         case LT_GOTO:
-            return "< goto";
+            return "<";
         case RT_GOTO:
-            return "> goto";
+            return ">";
         case GOTO:
             return "goto";
         case EQ_GOTO:
-            return "== goto";
+            return "==";
         case ASSIGNING:
             return ":=";
     }
@@ -380,13 +327,14 @@ void printList(GList *list, char *listName){
 void yyerror (char *string){
     //Printing line where conflict was found. Subtracted to fix variable
     printf ("ERROR: unknown character at line %d\n",yylineno);
+    printf ("The unknown string: %s ", string);
     exit(1);
 }
 
 symtab_entry_p symbAdd(string s){
     symtab_entry_p new_entry = malloc(sizeof(symtab_entry_));
     new_entry->name = strdup(s);
-    new_entry->value.i = 1;
+    new_entry->value.i = 0;
     if (g_hash_table_insert(table, new_entry->name, new_entry))
         return new_entry;
     else{
@@ -422,9 +370,9 @@ quad_p gen(symtab_entry_p source1, symtab_entry_p source2, int op, symtab_entry_
     newQuad->op = op;
 
     if(destination == NULL){
-        printf("Created Goto comparison at address: %d\n", quadCounter);
+        //printf("Created Goto comparison at address: %d\n", quadCounter);
         newQuad->next = 0;
-        printf("Hexa Address: %p value: %d\n", &newQuad->next, newQuad->next);
+        //printf("Hexa Address: %p value: %d\n", &newQuad->next, newQuad->next);
     }
 
     //Caution: may have errors
@@ -439,7 +387,7 @@ quad_p genGoTo(unsigned int address){
     quad_p newQuad = initGotoQuad(address);
 
     //Caution: may have errors
-    printf("Added GoTO in line %d with next: %d\n", quadCounter, address);
+    //printf("Added GoTO in line %d with next: %d\n", quadCounter, address);
     return newQuad;
 }
 
@@ -447,7 +395,7 @@ void backPatchItem(gpointer data, gpointer user_data){
     int address = (int)user_data;
     quad_p quad = (quad_p)data;
     if((quad->op == GOTO||quad->op == LT_GOTO||quad->op == RT_GOTO ||quad->op == EQ_GOTO) && (quad->next == 0)){
-        printf("Quad number %d is changing next from %d to %d\n", quad->address, quad->next, address);
+        //printf("Quad number %d is changing next from %d to %d\n", quad->address, quad->next, address);
         quad->next = address;
     }
 }
@@ -480,7 +428,7 @@ void printSymbolTable(){
 
 
 void printQuadList(){
-    printf("\n**************************\n");
+    printf("\n\n\n**************************\n");
     printf("****** Quads ******\n");
     printf("**************************\n");
 
@@ -523,43 +471,225 @@ quad_p initGotoQuad(int address){
     return temp;
 }
 
-void interpreter(){
-    int i=0;
-    for(i; i < quadList->len; i++){
-        quad_p quad = g_array_index(quadList, quad_p, i);
-        if(quad->source1->type == INT){
-                printf("Value: %d\n", quad->source1->value.i);
-        }
-
-        /*switch(quad->op){
+void doOperation(quad_p quad){
+    if(quad->source1->type == INT && quad->source2->type == INT){
+        //printf("Source1: %d Source2: %d\n", quad->source1->value.i, quad->source2->value.i);
+        switch(quad->op){
             case ADD:
+                quad->destination->value.i = quad->source1->value.i + quad->source2->value.i;
+                break;
 
             case SUBSTRACT:
-                return "-";
+                quad->destination->value.i = quad->source1->value.i - quad->source2->value.i;
+                break;
+
             case MULT:
-                return "*";
+                quad->destination->value.i = quad->source1->value.i * quad->source2->value.i;
+                break;
+
             case DIVIDE:
-                return "/";
-            case LT_GOTO:
-                return "< goto";
-            case RT_GOTO:
-                return "> goto";
-            case GOTO:
-                return "goto";
-            case EQ_GOTO:
-                return "== goto";
-            case ASSIGNING:
-                return ":=";
-        }*/
+                quad->destination->value.i = quad->source1->value.i / quad->source2->value.i;
+                break;
+        }
+        //printf("Source1: %d Source2: %d\n", quad->source1->value.i, quad->source2->value.i);
     }
+    else if (quad->source1->type == FLO && quad->source2->type == INT){
+        //printf("Source1: %f Source2: %d\n", quad->source1->value.f, quad->source2->value.i);
+        switch(quad->op){
+            case ADD:
+                quad->destination->value.f = quad->source1->value.f + quad->source2->value.i;
+                break;
+
+            case SUBSTRACT:
+                quad->destination->value.f = quad->source1->value.f - quad->source2->value.i;
+                break;
+
+            case MULT:
+                quad->destination->value.f = quad->source1->value.f * quad->source2->value.i;
+                break;
+
+            case DIVIDE:
+                quad->destination->value.f = quad->source1->value.f / quad->source2->value.i;
+                break;
+        }
+        //printf("Source1: %f Source2: %d\n", quad->source1->value.f, quad->source2->value.i);
+    }
+    else if (quad->source1->type == INT && quad->source2->type == FLO){
+        //printf("Source1: %d Source2: %f\n", quad->source1->value.i, quad->source2->value.f);
+        switch(quad->op){
+            case ADD:
+                quad->destination->value.f = quad->source1->value.i + quad->source2->value.f;
+                break;
+
+            case SUBSTRACT:
+                quad->destination->value.f = quad->source1->value.i - quad->source2->value.f;
+                break;
+
+            case MULT:
+                quad->destination->value.f = quad->source1->value.i * quad->source2->value.f;
+                break;
+
+            case DIVIDE:
+                quad->destination->value.f = quad->source1->value.i / quad->source2->value.f;
+                break;
+        }
+        //printf("Source1: %d Source2: %f\n", quad->source1->value.i, quad->source2->value.f);
+    }
+    else if(quad->source1->type == FLO && quad->source2->type == FLO){
+        //printf("Source1: %f Source2: %f\n", quad->source1->value.f, quad->source2->value.f);
+        switch(quad->op){
+            case ADD:
+                quad->destination->value.f = quad->source1->value.f + quad->source2->value.f;
+                break;
+
+            case SUBSTRACT:
+                quad->destination->value.f = quad->source1->value.f - quad->source2->value.f;
+                break;
+
+            case MULT:
+                quad->destination->value.f = quad->source1->value.f * quad->source2->value.f;
+                break;
+
+            case DIVIDE:
+                quad->destination->value.f = quad->source1->value.f / quad->source2->value.f;
+                break;
+        }
+        //printf("Source1: %f Source2: %f\n", quad->source1->value.f, quad->source2->value.f);
+    }
+
+}
+
+void doAssign(quad_p quad){
+    if(quad->source1->type == INT && quad->destination->type == INT){
+        //printf("Source1: %d Destination: %d\n", quad->source1->value.i, quad->destination->value.i);
+        quad->destination->value.i = quad->source1->value.i;
+    }
+    else if (quad->source1->type == FLO && quad->destination->type == INT){
+        //printf("Source1: %f Destination: %d\n", quad->source1->value.f, quad->destination->value.i);
+        quad->destination->value.i = quad->source1->value.f;
+    }
+    else if (quad->source1->type == INT && quad->destination->type == FLO){
+        //printf("Source1: %d Destination: %f\n", quad->source1->value.i, quad->destination->value.f);
+        quad->destination->value.f = quad->source1->value.i;
+    }
+    else if(quad->source1->type == FLO && quad->destination->type == FLO){
+        //printf("Source1: %f Destination: %f\n", quad->source1->value.f, quad->destination->value.f);
+        quad->destination->value.f = quad->source1->value.f;
+    }
+}
+
+void doComparison(quad_p quad, int *i){
+    if(quad->source1->type == INT && quad->source2->type == INT){
+        //printf("Comparing %d < %d \n", quad->source1->value.i , quad->source2->value.i);
+        switch(quad->op){
+            case LT_GOTO:
+                if(quad->source1->value.i < quad->source2->value.i){
+                    //printf("Goin' to: %d\n", quad->next);
+                    *i = quad->next -1;
+                }
+                break;
+            case RT_GOTO:
+                if(quad->source1->value.i > quad->source2->value.i){
+                    *i = quad->next - 1;
+                }
+                break;
+            case EQ_GOTO:
+                if(quad->source1->value.i == quad->source2->value.i){
+                    *i = quad->next -1;
+                }
+                break;
+        }
+    }
+    else if (quad->source1->type == FLO && quad->source2->type == INT){
+        //printf("Comparing %f < %d \n", quad->source1->value.f , quad->source2->value.i);
+        switch(quad->op){
+            case LT_GOTO:
+                if(quad->source1->value.f < quad->source2->value.i){
+                    //printf("Goin' to: %d\n", quad->next);
+                    *i = quad->next -1;
+                }
+                break;
+            case RT_GOTO:
+                if(quad->source1->value.f > quad->source2->value.i){
+                    *i = quad->next - 1;
+                }
+                break;
+            case EQ_GOTO:
+                if(quad->source1->value.f == quad->source2->value.i){
+                    *i = quad->next -1;
+                }
+                break;
+        }
+    }
+    else if (quad->source1->type == INT && quad->source2->type == FLO){
+        //printf("Comparing %d < %f \n", quad->source1->value.i , quad->source2->value.f);
+        switch(quad->op){
+            case LT_GOTO:
+                if(quad->source1->value.i < quad->source2->value.f){
+                    //printf("Goin' to: %d\n", quad->next);
+                    *i = quad->next -1;
+                }
+                break;
+            case RT_GOTO:
+                if(quad->source1->value.i > quad->source2->value.f){
+                    *i = quad->next - 1;
+                }
+                break;
+            case EQ_GOTO:
+                if(quad->source1->value.i == quad->source2->value.f){
+                    *i = quad->next -1;
+                }
+                break;
+        }
+    }
+    else if(quad->source1->type == FLO && quad->source2->type == FLO){
+        //printf("Comparing %f < %f \n", quad->source1->value.f , quad->source2->value.f);
+        switch(quad->op){
+            case LT_GOTO:
+                if(quad->source1->value.f < quad->source2->value.f){
+                    //printf("Goin' to: %d\n", quad->next);
+                    *i = quad->next -1;
+                }
+                break;
+            case RT_GOTO:
+                if(quad->source1->value.f > quad->source2->value.f){
+                    *i = quad->next - 1;
+                }
+                break;
+            case EQ_GOTO:
+                if(quad->source1->value.f == quad->source2->value.f){
+                    *i = quad->next -1;
+                }
+                break;
+        }
+    }
+}
+
+void interpreter(){
+    int i=1;
+    printf("\n\nExecuting... \n\n");
+    for(i; i <= quadList->len; i++){
+        quad_p quad = g_array_index(quadList, quad_p, i-1);
+        printf("Doing %s at quad: %d\n", translateOp(quad->op), quad->address);
+        if(quad->op == GOTO){
+            //printf("Goin' to: %d\n", quad->next);
+            i = quad->next - 1;
+        }else if (quad->op == LT_GOTO || quad->op == RT_GOTO || quad->op == EQ_GOTO){
+            doComparison(quad, &i);
+        }else if (quad->op == ASSIGNING){
+            doAssign(quad);
+        }else{
+            doOperation(quad);
+        }
+    }
+    printf("\nFinished Execution...\n");
 }
 
 main (){
     table = g_hash_table_new(g_str_hash, g_str_equal);
     quadList = g_array_new(FALSE, FALSE, sizeof(quad_p));
     yyparse();
-    //printSymbolTable();
-    interpreter();
+    printSymbolTable();
     printQuadList();
-
+    interpreter();
 }

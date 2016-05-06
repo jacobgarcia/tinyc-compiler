@@ -20,6 +20,9 @@ int h7;
  if (i < 10) then{
      j := i*10;
      i := i+1;
+ } else{
+     i := j+i;
+     i := j+i;
      i := j+i;
      i := j+i;
      i := j+i;

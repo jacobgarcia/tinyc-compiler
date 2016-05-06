@@ -14,18 +14,16 @@ int h7;
 /* There is no "main" program, just blocks */
 
 
- h3 := 10.0;
- i := 0;
- i7 := 2;
-  while (i < 10) do {
-     j := i*10;
-     i := i+1;
-     i := j+i;
-     i := j+i;
-     i := j+i;
-     i := j+i;
-  }
+h3 := 10.0;
+i := 0;
+i7 := 2;
+while (i < 10) do {
+ j := i*10;
+ i := i+1;
+ j7 := i+4;
+}
 
- h := j/i;
- h2 := h / 10.0;
- h := 100*h;
+j7 := j7;
+h := j/i;
+h2 := h / 10.0;
+h := 100*h;

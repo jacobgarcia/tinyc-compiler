@@ -147,11 +147,13 @@
 
 [0-9][0-9]*									{	/* integer numbers*/
 												//printf("int_num ");
+                                                yylval.ival = atoi(yytext);
 												return INT_NUM;
 											}
 
 0(c|C)[0-7]									{	/*octal number*/
 												//printf("int_num ");
+                                                yylval.ival = atoi(yytext);
 												return INT_NUM;
 											}
 
