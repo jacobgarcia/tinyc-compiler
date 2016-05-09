@@ -1,9 +1,9 @@
-/*	Project:	Syntatic Analizer
-*	Purpose: 	Analyze declarations in a tinyC program
-*	Authors: 	Jacob Rivera
-*				Oscar Sánchez
+/*    Project:    Syntatic Analizer
+*    Purpose:     Analyze declarations in a tinyC program
+*    Authors:     Jacob Rivera
+*                Oscar Sánchez
 *                Mario García
-*	Date:		March 23, 2015
+*    Date:        March 23, 2015
 */
 #include <glib.h>
 #include <stdio.h>
@@ -48,9 +48,9 @@ typedef struct conditional *conditional_p;
 
 
 struct quad{
-	symtab_entry_p source1, source2, destination;
-	unsigned int address;
-	unsigned int op;
+    symtab_entry_p source1, source2, destination;
+    unsigned int address;
+    unsigned int op;
     unsigned int next;
 } quad_;
 typedef struct quad *quad_p;

@@ -1,16 +1,16 @@
-/*	Project:	Syntatic Analizer
-*	Purpose: 	Syntatic rules and program execution
-*	Authors: 	Jacob Rivera
-*				Oscar Sánchez
+/*    Project:    Syntatic Analizer
+*    Purpose:     Syntatic rules and program execution
+*    Authors:     Jacob Rivera
+*                Oscar Sánchez
 *                Mario García
-*	Date:		March 29 , 2015
+*    Date:        March 29 , 2015
 */
 
 %{
-	#include "table.h"
+    #include "table.h"
     /* Function definitions */
-	void yyerror (char *string);
-	extern int yylineno;
+    void yyerror (char *string);
+    extern int yylineno;
 %}
 
  /* Define the elements of the attribute stack */
@@ -60,30 +60,28 @@
 %type <cond> stmt;
 
 %%
-program:				    var_dec stmt_seq {printf("\n\nCompilation successful\n\n");}
-							;
+program:                    var_dec stmt_seq {printf("\n\nCompilation successful\n\n");}
+                            ;
 
-var_dec:					var_dec single_dec  |
-							;
+var_dec:                    var_dec single_dec |
+                            ;
 
-single_dec: 				type ID {
+single_dec:                 type ID {
                                 symtab_entry_p new = symbAdd($2);
                                 new->type = $1;
                             } SEMI;
 
-type:						INTEGER {
+type:                       INTEGER {
                                 $$ = INT;
                             }|
                             FLOAT {
                                 $$ = FLO;
                             };
 
-stmt_seq:					stmt_seq stmt {
+stmt_seq:                   stmt_seq stmt |
+                            ;
 
-                            }|
-							;
-
-stmt:						IF exp THEN m stmt n ELSE m stmt m{
+stmt:                       IF exp THEN m stmt n ELSE m stmt m{
                                 backPatch($2->trueList, $4);
                                 backPatch($2->falseList, $8);
                                 GList *temp = NULL;
@@ -135,13 +133,9 @@ stmt:						IF exp THEN m stmt n ELSE m stmt m{
                                 list->trueList = NULL;
                                 list->falseList = NULL;
                                 $$ = list;
-                            }
-                    		;
+                            };
 
-block:						LBRACE stmt_seq RBRACE{
-
-                            }
-							;
+block:                      LBRACE stmt_seq RBRACE;
 
 exp:
                             simple_exp RT simple_exp {
@@ -172,7 +166,7 @@ exp:
                             };
 
 
-simple_exp:					simple_exp PLUS term {
+simple_exp:                 simple_exp PLUS term {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 temp->type = FLO;
                                 sprintf(integerString, "t%d", tempCounter++);
@@ -180,8 +174,7 @@ simple_exp:					simple_exp PLUS term {
                                 checkTypeCompilation($1,$3,temp,"adding");
                                 gen($1,$3,ADD,temp);
                                 $$ = temp;
-                            }
-                            |
+                            }|
                             simple_exp MINUS term {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 temp->type = FLO;
@@ -195,7 +188,7 @@ simple_exp:					simple_exp PLUS term {
                                 $$ = $1;
                             };
 
-term:						term TIMES factor {
+term:                       term TIMES factor {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
@@ -215,7 +208,7 @@ term:						term TIMES factor {
                                 $$ = $1;
                             };
 
-factor:					    INT_NUM {
+factor:                     INT_NUM {
                                 symtab_entry_p temp = malloc(sizeof(symtab_entry_));
                                 sprintf(integerString, "t%d", tempCounter++);
                                 temp->name = strdup(integerString);
@@ -236,7 +229,7 @@ factor:					    INT_NUM {
                                 $$ = $1;
                             };
 
-variable:					ID {
+variable:                   ID {
                                 $$ = symlook($1);
                             };
 
@@ -363,7 +356,7 @@ quad_p gen(symtab_entry_p source1, symtab_entry_p source2, int op, symtab_entry_
     if(source2 != NULL){
         newQuad->source2 = source2;
     }else{
-    	newQuad->source2 = NULL;
+        newQuad->source2 = NULL;
     }
 
     newQuad->destination = destination;
@@ -420,7 +413,7 @@ string printType(int type){
 
 void printSymbolTable(){
     printf("\n**************************\n");
-	printf("****** Symbol Table ******\n");
+    printf("****** Symbol Table ******\n");
     printf("**************************\n");
 
     g_hash_table_foreach(table, (GHFunc)printSymbolItem, NULL);
@@ -450,7 +443,7 @@ void printQuadList(){
                 item->source1->name, item->source2->name, item->destination->name);
             }
         }else{
-        	printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
+            printf("%2d %9s %12s %11s %13s\n",item->address, translateOp(item->op),
             item->source1->name, " ", item->destination->name);
         }
     }

@@ -1,4 +1,5 @@
 lexical_analyzer
+compiler
 tiny_c_grammar.tab.c
 tiny_c_grammar.output
 lex.yy.c
